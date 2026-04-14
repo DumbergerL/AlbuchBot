@@ -280,6 +280,37 @@ jobs:
           cat output/email_body.txt >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
+      - name: Validate email configuration
+        if: steps.run_state.outputs.should_process == 'true' && env.MAIL_SERVER && env.MAIL_PORT && env.MAIL_USER && env.MAIL_PASS && env.MAIL_TO
+        env:
+          MAIL_SERVER: ${{ secrets.MAIL_SERVER }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_PASS: ${{ secrets.MAIL_PASS }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+        shell: bash
+        run: |
+          echo "Email Configuration:"
+          echo "  MAIL_SERVER: ${MAIL_SERVER}"
+          echo "  MAIL_PORT: ${MAIL_PORT}"
+          echo "  MAIL_USER: ${MAIL_USER}"
+          echo "  MAIL_TO: ${MAIL_TO}"
+          echo "  MAIL_FROM: ${MAIL_FROM:-<uses MAIL_USER>}"
+          echo ""
+          echo "Validating MAIL_SERVER DNS resolution..."
+          if python -c "import socket; socket.gethostbyname('$MAIL_SERVER')" 2>/dev/null; then
+            echo "✓ DNS resolution successful"
+          else
+            echo "✗ DNS resolution FAILED for '$MAIL_SERVER'"
+            echo "  Please check: Settings > Secrets and variables > Actions > MAIL_SERVER"
+            echo "  Common mistakes:"
+            echo "    - Typo in hostname (e.g., smtp.gmails.com instead of smtp.gmail.com)"
+            echo "    - Empty secret value"
+            echo "    - Protocol missing (remove http:// or https://)"
+            exit 1
+          fi
+
       - name: Send digest email
         if: steps.run_state.outputs.should_process == 'true' && env.MAIL_SERVER && env.MAIL_PORT && env.MAIL_USER && env.MAIL_PASS && env.MAIL_TO
         env:

@@ -164,10 +164,25 @@ python agent/send_email_digest.py \
 
 Features:
 - Improved logging (startup, connection, auth, sending, errors)
-- SMTP validation before sending
+- DNS validation before SMTP connection (detects mistyped hostnames early)
+- SMTP configuration validation
 - Multiple attachments supported
 - UTF-8 support
-- Automatic error reporting with details
+- Automatic error reporting with actionable hints
+
+**Troubleshooting email sending:**
+
+If you see `No address associated with hostname`:
+1. Check your `MAIL_SERVER` secret in GitHub (Settings → Secrets and variables → Actions)
+2. Common issues:
+   - Typo: `smtp.gmails.com` should be `smtp.gmail.com`
+   - Empty secret value
+   - Protocol included: `https://smtp.gmail.com` (remove the `https://`)
+
+If you see `Authentication failed`:
+1. Verify `MAIL_USER` and `MAIL_PASS` are correct
+2. For Gmail: use an **App Password**, not your regular password
+3. For Office 365: verify Basic Auth is enabled in your tenant
 
 ## Output format
 
