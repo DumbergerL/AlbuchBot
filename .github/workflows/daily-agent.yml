@@ -289,17 +289,11 @@ jobs:
           MAIL_PASS: ${{ secrets.MAIL_PASS }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ env.MAIL_SERVER }}
-          server_port: ${{ env.MAIL_PORT }}
-          username: ${{ env.MAIL_USER }}
-          password: ${{ env.MAIL_PASS }}
-          subject: ${{ steps.mail_content.outputs.subject }}
-          to: ${{ env.MAIL_TO }}
-          from: ${{ env.MAIL_FROM || env.MAIL_USER }}
-          body: ${{ steps.mail_content.outputs.body }}
-          attachments: output/news.json
+        run: |
+          python agent/send_email_digest.py \
+            --subject output/email_subject.txt \
+            --body output/email_body.txt \
+            --attachments output/news.json
 
       - name: Upload email digest artifact
         if: steps.run_state.outputs.should_process == 'true'

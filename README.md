@@ -145,6 +145,30 @@ This creates:
 
 The GitHub pipeline uses these files for email sending.
 
+**Optional local Step 4: Send email digest**
+
+```bash
+# Prerequisite: set email env vars or create agent/.env with MAIL_* values
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=your-email@gmail.com
+MAIL_PASS=your-app-password
+MAIL_TO=recipient@example.com
+MAIL_FROM=your-email@gmail.com
+
+python agent/send_email_digest.py \
+  --subject output/email_subject.txt \
+  --body output/email_body.txt \
+  --attachments output/news.json
+```
+
+Features:
+- Improved logging (startup, connection, auth, sending, errors)
+- SMTP validation before sending
+- Multiple attachments supported
+- UTF-8 support
+- Automatic error reporting with details
+
 ## Output format
 
 **Step 1 (Scraper) produces JSON** with:
