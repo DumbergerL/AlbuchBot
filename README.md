@@ -12,11 +12,12 @@ AlbuchBot contains:
 www/
   index.html
 agent/
-  scraper.py          # Step 1: PDF extraction + LLM → JSON
-  processor.py        # Step 2: JSON → Google Sheets
+  scraper.py            # Step 1: PDF extraction + LLM -> JSON
+  processor.py          # Step 2: JSON -> Google Sheets
+  build_email_digest.py # Step 3 helper: JSON -> email subject/body text
   requirements.txt
 .github/workflows/
-  daily-agent.yml    # Split two-job pipeline (Step 1 + Step 2)
+  daily-agent.yml       # Split pipeline with parallel jobs (Sheets + Email)
 ```
 
 ## Web page
@@ -128,6 +129,22 @@ python agent/processor.py \
 
 Both steps can be run independently or in sequence.
 
+**Optional local Step 3: Build email digest text**
+
+```bash
+python agent/build_email_digest.py \
+  --input output/news.json \
+  --run-state output/run_state.json \
+  --subject-output output/email_subject.txt \
+  --body-output output/email_body.txt
+```
+
+This creates:
+- `output/email_subject.txt`
+- `output/email_body.txt`
+
+The GitHub pipeline uses these files for email sending.
+
 ## Output format
 
 **Step 1 (Scraper) produces JSON** with:
@@ -156,9 +173,10 @@ Workflow file: `.github/workflows/daily-agent.yml`
 - Runs every day at 06:00 UTC
 - Can also be started manually via `workflow_dispatch`
 - Manual runs expose a `force_process` checkbox to reprocess the latest document even if it was already handled before
-- **Job 1** (scraper): Fetches PDF, extracts text, runs Gemini LLM → outputs `output/news.json` as artifact
+- **Job 1** (scraper): Fetches PDF, extracts text, runs Gemini LLM -> outputs `output/news.json` as artifact
 - **Job 2** (processor): Downloads artifact from Job 1, reads JSON, uploads to Google Sheets
-- If Job 2 fails, Job 1 output (news.json) is preserved as artifact for manual recovery
+- **Job 3** (email digest): Runs in parallel to Job 2, builds a readable flow-text digest from `news.json`, then sends it by email
+- If Job 2 or Job 3 fails, Job 1 output (`news.json`) is preserved as artifact for manual recovery
 
 Required GitHub repository secrets (`.github/workflows/daily-agent.yml`):
 
@@ -166,6 +184,13 @@ Required GitHub repository secrets (`.github/workflows/daily-agent.yml`):
 2. Create repository secret `GEMINI_API_KEY` (required for Step 1 scraper)
 3. Create repository secret `GOOGLE_SERVICE_ACCOUNT_JSON` with the full JSON key content (required for Step 2 processor)
 4. Create repository secret `GOOGLE_SPREADSHEET_ID` (required for Step 2 processor)
+5. For optional email digest sending (Step 3):
+   - `MAIL_SERVER` (for example `smtp.office365.com` or `smtp.gmail.com`)
+   - `MAIL_PORT` (for example `587`)
+   - `MAIL_USER`
+   - `MAIL_PASS`
+   - `MAIL_TO` (single address or comma-separated list)
+   - `MAIL_FROM` (optional, falls back to `MAIL_USER`)
 
 Spreadsheet permissions for pipeline Step 2:
 

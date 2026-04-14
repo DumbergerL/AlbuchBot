@@ -208,3 +208,99 @@ jobs:
         with:
           name: albuchbot-daily-complete
           path: output/news.json
+
+  step3-email-digest:
+    runs-on: ubuntu-latest
+    needs: step1-scraper
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r agent/requirements.txt
+
+      - name: Download news JSON artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: albuchbot-step1-output
+          path: output
+
+      - name: Determine whether email digest should run
+        id: run_state
+        shell: bash
+        run: |
+          python - << 'PY'
+          import json
+          from pathlib import Path
+
+          run_state_path = Path('output/run_state.json')
+          should_process = False
+          if run_state_path.exists():
+              data = json.loads(run_state_path.read_text(encoding='utf-8'))
+              should_process = bool(data.get('should_process'))
+              print(f"run_state reason: {data.get('reason')}")
+
+          with open('run_state_should_process.txt', 'w', encoding='utf-8') as f:
+              f.write('true' if should_process else 'false')
+          print(f"should_process={should_process}")
+          PY
+
+          SHOULD_PROCESS="$(cat run_state_should_process.txt)"
+          echo "should_process=${SHOULD_PROCESS}" >> "$GITHUB_OUTPUT"
+
+      - name: Build email digest text
+        if: steps.run_state.outputs.should_process == 'true'
+        run: |
+          python agent/build_email_digest.py \
+            --input output/news.json \
+            --run-state output/run_state.json \
+            --subject-output output/email_subject.txt \
+            --body-output output/email_body.txt \
+            --max-items 7
+
+      - name: Export email content for action
+        if: steps.run_state.outputs.should_process == 'true'
+        id: mail_content
+        shell: bash
+        run: |
+          SUBJECT="$(cat output/email_subject.txt)"
+          echo "subject=${SUBJECT}" >> "$GITHUB_OUTPUT"
+
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          cat output/email_body.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Send digest email
+        if: steps.run_state.outputs.should_process == 'true' && secrets.MAIL_SERVER != '' && secrets.MAIL_PORT != '' && secrets.MAIL_USER != '' && secrets.MAIL_PASS != '' && secrets.MAIL_TO != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USER }}
+          password: ${{ secrets.MAIL_PASS }}
+          subject: ${{ steps.mail_content.outputs.subject }}
+          to: ${{ secrets.MAIL_TO }}
+          from: ${{ secrets.MAIL_FROM != '' && secrets.MAIL_FROM || secrets.MAIL_USER }}
+          body: ${{ steps.mail_content.outputs.body }}
+          attachments: output/news.json
+
+      - name: Upload email digest artifact
+        if: steps.run_state.outputs.should_process == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: albuchbot-email-digest
+          path: |
+            output/email_subject.txt
+            output/email_body.txt
+            output/news.json
+          if-no-files-found: error
