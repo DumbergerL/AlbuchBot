@@ -1,0 +1,11 @@
+# Local environment files
+.env
+*.env
+agent/.env
+agent/service-account.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.log

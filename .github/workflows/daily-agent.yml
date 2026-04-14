@@ -1,0 +1,210 @@
+name: Daily AlbuchBot Run (Split Pipeline)
+
+on:
+  schedule:
+    # Every day at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_process:
+        description: Force analysis even if the latest PDF was already processed
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  step1-scraper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r agent/requirements.txt
+
+      - name: Validate Gemini API key exists
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY secret is missing."
+            echo "Set it in: Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+
+      - name: Download previous run artifact (best effort)
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: daily-agent.yml
+          branch: main
+          name: albuchbot-step1-output
+          path: .previous
+          if_no_artifact_found: warn
+        continue-on-error: true
+
+      - name: Extract last processed title from previous news.json
+        id: last_processed
+        shell: bash
+        run: |
+          python - << 'PY'
+          import json
+          from pathlib import Path
+
+          candidates = [
+              Path('.previous/news.json'),
+              Path('.previous/output/news.json'),
+          ]
+          title = ""
+          for path in candidates:
+              if path.exists():
+                  try:
+                      data = json.loads(path.read_text(encoding='utf-8'))
+                      source = data.get('source', {})
+                      title = (source.get('pdf_title') or source.get('pdf_link_name') or '').strip()
+                      if title:
+                          break
+                  except Exception:
+                      pass
+
+          with open(Path('.github_last_processed_output.txt'), 'w', encoding='utf-8') as f:
+              f.write(title)
+          print(f"Detected last processed title: {title if title else '(none)'}")
+          PY
+
+          LAST_TITLE="$(cat .github_last_processed_output.txt)"
+          echo "title=${LAST_TITLE}" >> "$GITHUB_OUTPUT"
+
+      - name: Run Step 1 - Web Scraper
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LAST_TITLE: ${{ steps.last_processed.outputs.title }}
+          DISPATCH_FORCE_PROCESS: ${{ github.event_name == 'workflow_dispatch' && inputs.force_process || false }}
+        shell: bash
+        run: |
+          FORCE_FLAG=""
+          if [ "$DISPATCH_FORCE_PROCESS" = "true" ]; then
+            echo "Force processing enabled via workflow_dispatch input."
+            FORCE_FLAG="--force-process"
+          fi
+
+          if [ -n "$LAST_TITLE" ]; then
+            echo "Running scraper with last processed title: $LAST_TITLE"
+            python agent/scraper.py \
+              --output output/news.json \
+              --run-state-output output/run_state.json \
+              --last-processed-document-title "$LAST_TITLE" \
+              $FORCE_FLAG
+          else
+            echo "No previous processed title found. Running full scraper."
+            python agent/scraper.py \
+              --output output/news.json \
+              --run-state-output output/run_state.json \
+              $FORCE_FLAG
+          fi
+
+      - name: Upload Step 1 output artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: albuchbot-step1-output
+          path: |
+            output/run_state.json
+            output/news.json
+          if-no-files-found: error
+
+  step2-processor:
+    runs-on: ubuntu-latest
+    needs: step1-scraper
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r agent/requirements.txt
+
+      - name: Validate Google Sheets settings exist
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+        run: |
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT" ]; then
+            echo "GOOGLE_SERVICE_ACCOUNT_JSON secret is missing."
+            exit 1
+          fi
+          if [ -z "$GOOGLE_SPREADSHEET_ID" ]; then
+            echo "GOOGLE_SPREADSHEET_ID secret is missing."
+            exit 1
+          fi
+
+      - name: Download news JSON artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: albuchbot-step1-output
+          path: output
+
+      - name: Determine whether processor should run
+        id: run_state
+        shell: bash
+        run: |
+          python - << 'PY'
+          import json
+          from pathlib import Path
+
+          run_state_path = Path('output/run_state.json')
+          should_process = False
+          if run_state_path.exists():
+              data = json.loads(run_state_path.read_text(encoding='utf-8'))
+              should_process = bool(data.get('should_process'))
+              print(f"run_state reason: {data.get('reason')}")
+
+          with open('run_state_should_process.txt', 'w', encoding='utf-8') as f:
+              f.write('true' if should_process else 'false')
+          print(f"should_process={should_process}")
+          PY
+
+          SHOULD_PROCESS="$(cat run_state_should_process.txt)"
+          echo "should_process=${SHOULD_PROCESS}" >> "$GITHUB_OUTPUT"
+
+      - name: Write Google service account file
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          mkdir -p .secrets
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT" > .secrets/google-service-account.json
+
+      - name: Run Step 2 - Google Sheets Processor
+        if: steps.run_state.outputs.should_process == 'true'
+        env:
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+          GOOGLE_WORKSHEET_NAME: AlbuchBot News
+        run: |
+          python agent/processor.py \
+            --input output/news.json \
+            --spreadsheet-id "$GOOGLE_SPREADSHEET_ID" \
+            --worksheet-name "$GOOGLE_WORKSHEET_NAME" \
+            --service-account-json .secrets/google-service-account.json
+
+      - name: Upload final output artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: albuchbot-daily-complete
+          path: output/news.json
