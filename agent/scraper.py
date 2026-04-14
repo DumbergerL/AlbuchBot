@@ -265,8 +265,8 @@ You are a local-news extraction assistant.
 
 Task:
 - Read the newsletter text below.
-- Extract exactly 9 relevant news entries from the document.
-- Return 2 items for 'gemeinderat', 2 items for 'vereine', 2 items for 'kirchliche', and 3 items for 'general'.
+- Extract exactly 16 relevant news entries from the document.
+- Return 4 items for each category: 'gemeinderat', 'vereine', 'kirchliche', and 'general'.
 - If there are not enough perfect matches for a category, use the closest relevant topics.
 - Target audience is a WhatsApp channel. Use a fitting emoji at the beginning of each title.
 
@@ -341,10 +341,10 @@ def _parse_items(raw_items: Any, category: str, expected_count: int) -> list[New
 
 def parse_structured_news(payload: dict[str, Any]) -> StructuredNews:
     structured = StructuredNews(
-        gemeinderat=_parse_items(payload.get("gemeinderat"), "gemeinderat", 2),
-        vereine=_parse_items(payload.get("vereine"), "vereine", 2),
-        kirchliche=_parse_items(payload.get("kirchliche"), "kirchliche", 2),
-        general=_parse_items(payload.get("general"), "general", 3),
+        gemeinderat=_parse_items(payload.get("gemeinderat"), "gemeinderat", 4),
+        vereine=_parse_items(payload.get("vereine"), "vereine", 4),
+        kirchliche=_parse_items(payload.get("kirchliche"), "kirchliche", 4),
+        general=_parse_items(payload.get("general"), "general", 4),
     )
     logger.info(
         "Parsed structured news counts: gemeinderat=%d, vereine=%d, kirchliche=%d, general=%d",

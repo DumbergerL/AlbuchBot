@@ -190,7 +190,7 @@ If you see `Authentication failed`:
 - source listing URL
 - selected PDF URL
 - pdf_link_name (human-readable name for HTML display, e.g. "AlbuchBote 16.01.2026")
-- exactly 7 news entries (2 gemeinderat + 2 vereine + 3 general)
+- exactly 16 news entries (4 gemeinderat + 4 vereine + 4 kirchliche + 4 general)
 - Each entry has: title, summary, source_excerpt
 
 **Step 2 (Processor) writes to Google Sheets** with columns:

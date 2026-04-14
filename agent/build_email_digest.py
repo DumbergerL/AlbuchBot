@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-state", default="output/run_state.json", help="Path to run state JSON")
     parser.add_argument("--subject-output", default="output/email_subject.txt", help="Subject output path")
     parser.add_argument("--body-output", default="output/email_body.txt", help="Body output path")
-    parser.add_argument("--max-items", type=int, default=7, help="Max number of items in digest")
+    parser.add_argument("--max-items", type=int, default=16, help="Max number of items in digest")
     return parser.parse_args()
 
 
