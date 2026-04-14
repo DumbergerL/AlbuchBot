@@ -1,4 +1,4 @@
-name: Daily AlbuchBot Run (Split Pipeline)
+name: Daily AlbuchBot Run
 
 on:
   schedule:
