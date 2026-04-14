@@ -1,204 +1,400 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AlbuchBot | News fuer Steinheim</title>
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-    <style>
-      :root {
-        --bg-1: #f4efe6;
-        --bg-2: #e5f1ea;
-        --ink: #1c2a24;
-        --accent: #0f8f61;
-        --accent-2: #155e75;
-        --card: rgba(255, 255, 255, 0.78);
-        --line: rgba(20, 40, 34, 0.15);
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlbuchBot | News für Steinheim</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+  <style>
+    :root {
+      --bg-1: #f4efe6;
+      --bg-2: #e5f1ea;
+      --ink: #1c2a24;
+      --accent: #0f8f61;
+      --accent-2: #155e75;
+      --card: rgba(255, 255, 255, 0.78);
+      --line: rgba(20, 40, 34, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(55rem 55rem at 95% -5%, rgba(21, 94, 117, 0.2), transparent 60%),
+        radial-gradient(45rem 45rem at -10% 105%, rgba(15, 143, 97, 0.22), transparent 55%),
+        linear-gradient(145deg, var(--bg-1), var(--bg-2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+
+    main {
+      width: min(720px, 95vw);
+      background: var(--card);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 1.75rem 1.25rem;
+      box-shadow: 0 24px 45px rgba(26, 52, 46, 0.15);
+      animation: rise 700ms ease-out both;
+    }
+
+    .hero-mark {
+      width: min(260px, 62vw);
+      height: auto;
+      display: block;
+      margin: 0 auto 1.35rem;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      line-height: 1.08;
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0 0 1rem;
+      line-height: 1.55;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(15, 143, 97, 0.12);
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .whatsapp-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-top: 1.25rem;
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+      box-shadow: 0 10px 22px rgba(21, 94, 117, 0.3);
+      border: none;
+      cursor: pointer;
+    }
+
+    .whatsapp-link:hover {
+      transform: translateY(-2px);
+    }
+
+    .whatsapp-link:active {
+      transform: translateY(0);
+    }
+
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    .imprint-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 0.85rem;
+      padding: 0;
+      font-family: inherit;
+      transition: opacity 160ms ease;
+    }
+
+    .imprint-btn:hover {
+      opacity: 0.7;
+    }
+
+    /* Modal Overlay */
+    #modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 200ms ease-out;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    #modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--card);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 2rem 1.5rem;
+      max-width: 600px;
+      width: 100%;
+      position: relative;
+      animation: slideUp 300ms ease-out;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      color: var(--ink);
+      opacity: 0.6;
+      transition: opacity 160ms ease;
+      padding: 0;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      opacity: 1;
+    }
+
+    .modal-title {
+      margin-top: 0;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-section h3 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .modal-section p {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .modal-section a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .modal-section a:hover {
+      text-decoration: underline;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
       }
-
-      * {
-        box-sizing: border-box;
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
+    }
 
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-        color: var(--ink);
-        background:
-          radial-gradient(55rem 55rem at 95% -5%, rgba(21, 94, 117, 0.2), transparent 60%),
-          radial-gradient(45rem 45rem at -10% 105%, rgba(15, 143, 97, 0.22), transparent 55%),
-          linear-gradient(145deg, var(--bg-1), var(--bg-2));
-        display: grid;
-        place-items: center;
-        padding: 1.5rem 1rem;
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.985);
       }
-
-      .card {
-        width: min(720px, 95vw);
-        background: var(--card);
-        backdrop-filter: blur(4px);
-        border: 1px solid var(--line);
-        border-radius: 20px;
-        padding: 1.75rem 1.25rem;
-        box-shadow: 0 24px 45px rgba(26, 52, 46, 0.15);
-        animation: rise 700ms ease-out both;
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
       }
+    }
 
-      .hero-mark {
-        width: min(260px, 62vw);
-        height: auto;
-        display: block;
-        margin: 0 auto 1.35rem;
-        object-fit: contain;
-      }
+    @media (max-width: 768px) {
+      body { padding: 1rem 0.75rem; }
+      main { padding: 1.5rem 1rem; border-radius: 16px; }
+      h1 { font-size: clamp(1.6rem, 5vw, 2.4rem); margin-bottom: 0.75rem; }
+      p { font-size: 0.95rem; margin-bottom: 0.85rem; }
+      .pill { font-size: 0.85rem; padding: 0.2rem 0.6rem; }
+      .whatsapp-link { width: 100%; margin-top: 1rem; padding: 0.95rem 1rem; }
+      .modal-content { padding: 1.75rem 1.25rem; }
+    }
 
-      h1 {
-        margin-top: 0;
-        font-size: clamp(1.8rem, 4vw, 2.8rem);
-        line-height: 1.08;
-        letter-spacing: 0.02em;
-      }
+    @media (max-width: 480px) {
+      body { padding: 0.75rem 0.5rem; }
+      main { padding: 1.25rem 0.9rem; }
+      .hero-mark { width: min(200px, 65vw); margin-bottom: 1rem; }
+      h1 { font-size: clamp(1.4rem, 6vw, 2rem); margin-bottom: 0.6rem; }
+      p { font-size: 0.9rem; line-height: 1.5; margin-bottom: 0.7rem; }
+      .whatsapp-link { font-size: 0.95rem; padding: 0.9rem 1rem; }
+      .modal-content { padding: 1.5rem 1rem; }
+      .modal-close { font-size: 1.5rem; width: 2rem; height: 2rem; }
+      .modal-title { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="hero-mark" src="./albuch-bot.png" alt="Modernisiertes Wappen der Gemeinde Steinheim als AlbuchBot Signet" />
+    <span class="pill">AlbuchBot 2026</span>
+    <h1>Lokale Nachrichten aus dem Albuch Bote direkt auf WhatsApp</h1>
+    <p>
+      AlbuchBot sammelt die aktuellste Ausgabe des Albuch Bote, extrahiert wichtige Inhalte
+      und bereitet die wichtigsten Nachrichten kompakt für einen WhatsApp-Kanal auf.
+    </p>
+    <p>
+      Die automatischen Updates decken Gemeinderat, Vereinsleben, kirchliche Themen und
+      allgemeine Meldungen in Steinheim ab.
+    </p>
 
-      p {
-        margin: 0 0 1rem;
-        line-height: 1.55;
-      }
+    <a class="whatsapp-link" href="https://whatsapp.com/channel/0029Vb7aReE0AgW8ldqnzU1g" target="_blank" rel="noreferrer noopener">
+      Zum WhatsApp Kanal
+    </a>
 
-      .pill {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 999px;
-        background: rgba(15, 143, 97, 0.12);
-        color: var(--accent);
-        font-weight: 700;
-        margin-bottom: 0.75rem;
-      }
+    <div class="footer">
+      <button class="imprint-btn" type="button" onclick="showModal()">Impressum</button>
+    </div>
+  </main>
 
-      .whatsapp-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        justify-content: center;
-        gap: 0.6rem;
-        margin-top: 1.25rem;
-        text-decoration: none;
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 1rem;
-        transition: transform 160ms ease, box-shadow 160ms ease;
-        box-shadow: 0 10px 22px rgba(21, 94, 117, 0.3);
-      }
+  <div id="modal">
+    <div class="modal-content">
+      <button class="modal-close" type="button" onclick="hideModal()">&times;</button>
+      
+      <h2 class="modal-title">Impressum</h2>
 
-      .whatsapp-link:hover {
-        transform: translateY(-2px);
-      }
+      <div class="modal-section">
+        <h3>Angaben gemäß § 5 TMG</h3>
+        <p>
+          AlbuchBot<br>
+          Deutschland
+        </p>
+      </div>
 
-      .whatsapp-link:active {
-        transform: translateY(0
+      <div class="modal-section">
+        <h3>Kontakt</h3>
+        <p>
+          E-Mail: <a href="mailto:lukas.dumberger@gmail.com">lukas.dumberger@gmail.com</a><br>
+          Telefon: <a href="tel:+4915754219608">+49 (0) 157 5421 9608</a>
+        </p>
+      </div>
 
-      .note {
-        margin-top: 0.85r768px) {
-        body {
-          padding: 1rem 0.75rem;
-        }
+      <div class="modal-section">
+        <h3>Haftung für Inhalte</h3>
+        <p>
+          Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach
+          den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter
+          jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen
+          oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.
+        </p>
+        <p>
+          Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den
+          allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist jedoch erst
+          ab dem Zeitpunkt der Kenntnis einer konkreten Rechtsverletzung möglich. Bei Bekanntwerden
+          von entsprechenden Rechtsverletzungen werden wir diese Inhalte umgehend entfernen.
+        </p>
+      </div>
 
-        .card {
-          padding: 1.5rem 1rem;
-          border-radius: 16px;
-        }
+      <div class="modal-section">
+        <h3>Haftung für Links</h3>
+        <p>
+          Unser Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte wir keinen
+          Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen.
+          Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der
+          Seiten verantwortlich. Die verlinkten Seiten wurden zum Zeitpunkt der Verlinkung auf mögliche
+          Rechtsverstöße überprüft. Rechtswidrige Inhalte waren zum Zeitpunkt der Verlinkung nicht erkennbar.
+        </p>
+        <p>
+          Eine permanente inhaltliche Kontrolle der verlinkten Seiten ist jedoch ohne konkrete
+          Anhaltspunkte einer Rechtsverletzung nicht zumutbar. Bei Bekanntwerden von Rechtsverletzungen
+          werden wir derartige Links umgehend entfernen.
+        </p>
+      </div>
 
-        h1 {
-          font-size: clamp(1.6rem, 5vw, 2.4rem);
-          margin-bottom: 0.75rem;
-        }
+      <div class="modal-section">
+        <h3>Urheberrecht</h3>
+        <p>
+          Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem
+          deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der
+          Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des
+          jeweiligen Autors bzw. Erstellers. Downloads und Kopien dieser Seite sind nur für den privaten,
+          nicht kommerziellen Gebrauch gestattet.
+        </p>
+        <p>
+          Soweit die Inhalte auf dieser Seite nicht vom Betreiber erstellt wurden, werden die
+          Urheberrechte Dritter beachtet. Insbesondere werden Inhalte Dritter als solche gekennzeichnet.
+          Sollten Sie trotzdem auf eine Urheberrechtsverletzung aufmerksam werden, bitten wir um einen
+          entsprechenden Hinweis. Bei Bekanntwerden von Rechtsverletzungen werden wir derartige Inhalte
+          umgehend entfernen.
+        </p>
+      </div>
 
-        p {
-          font-size: 0.95rem;
-          margin-bottom: 0.85rem;
-        }
-
-        .pill {
-          font-size: 0.85rem;
-          padding: 0.2rem 0.6rem;
-        }
-
-        .whatsapp-link {
-          width: 100%;
-          margin-top: 1rem;
-          padding: 0.95rem 1rem;
-        }
-      }
-
-      @media (max-width: 480px) {
-        body {
-          padding: 0.75rem 0.5rem;
-        }
-
-        .card {
-          padding: 1.25rem 0.9rem;
-        }
-
-        .hero-mark {
-          width: min(200px, 65vw);
-          margin-bottom: 1rem;
-        }
-
-        h1 {
-          font-size: clamp(1.4rem, 6vw, 2rem);
-          margin-bottom: 0.6rem;
-        }
-
-        p {
-          font-size: 0.9rem;
-          line-height: 1.5;
-          margin-bottom: 0.7rem;
-        }
-
-        .whatsapp-link {
-          font-size: 0.95rem;
-          padding: 0.9rem
-
-      @media (max-width: 640px) {
-        .hero-mark {
-          width: min(220px, 72vw);
-          margin-bottom: 1rem;
-        }
-      }
-
-      @keyframes rise {
-        from {
-          opacity: 0;
-          transform: translateY(12px) scale(0.985);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <main class="card">
-      <img class="hero-mark" src="./albuch-bot.png" alt="Modernisiertes Wappen der Gemeinde Steinheim als AlbuchBot Signet" />
-      <span class="pill">AlbuchBot 2026</span>
-      <h1>Lokale Nachrichten aus dem Albuch Bote direkt auf WhatsApp</h1>
-      <p>
-        AlbuchBot sammelt die aktuellste Ausgabe des Albuch Bote, extrahiert wichtige Inhalte
-        und bereitet die wichtigsten Nachrichten kompakt fuer einen WhatsApp-Kanal auf.
+      <p style="font-size: 0.85rem; opacity: 0.7; margin-top: 1.5rem; margin-bottom: 0;">
+        Quelle: <a href="https://www.e-recht24.de/" target="_blank" rel="noreferrer noopener">eRecht24</a>
       </p>
-      <p>
-        Die automatischen Updates decken Gemeinderat, Vereinsleben und allgemeine Themen in
-        Steinheim ab.
-      </p>
+    </div>
+  </div>
 
-      <a class="whatsapp-link" href="https://whatsapp.com/channel/0029Vb7aReE0AgW8ldqnzU1g" target="_blank" rel="noreferrer noopener">
-        Zum WhatsApp Kanal
-      </a>
-    </main>
-  </body>
+  <script>
+    function showModal() {
+      document.getElementById('modal').classList.add('show');
+    }
+
+    function hideModal() {
+      document.getElementById('modal').classList.remove('show');
+    }
+
+    // Close modal when clicking on background
+    document.getElementById('modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        hideModal();
+      }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        hideModal();
+      }
+    });
+  </script>
+</body>
 </html>
