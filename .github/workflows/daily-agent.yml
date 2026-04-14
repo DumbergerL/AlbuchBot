@@ -281,16 +281,23 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Send digest email
-        if: steps.run_state.outputs.should_process == 'true' && secrets.MAIL_SERVER != '' && secrets.MAIL_PORT != '' && secrets.MAIL_USER != '' && secrets.MAIL_PASS != '' && secrets.MAIL_TO != ''
+        if: steps.run_state.outputs.should_process == 'true' && env.MAIL_SERVER && env.MAIL_PORT && env.MAIL_USER && env.MAIL_PASS && env.MAIL_TO
+        env:
+          MAIL_SERVER: ${{ secrets.MAIL_SERVER }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_PASS: ${{ secrets.MAIL_PASS }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: ${{ secrets.MAIL_SERVER }}
-          server_port: ${{ secrets.MAIL_PORT }}
-          username: ${{ secrets.MAIL_USER }}
-          password: ${{ secrets.MAIL_PASS }}
+          server_address: ${{ env.MAIL_SERVER }}
+          server_port: ${{ env.MAIL_PORT }}
+          username: ${{ env.MAIL_USER }}
+          password: ${{ env.MAIL_PASS }}
           subject: ${{ steps.mail_content.outputs.subject }}
-          to: ${{ secrets.MAIL_TO }}
-          from: ${{ secrets.MAIL_FROM != '' && secrets.MAIL_FROM || secrets.MAIL_USER }}
+          to: ${{ env.MAIL_TO }}
+          from: ${{ env.MAIL_FROM || env.MAIL_USER }}
           body: ${{ steps.mail_content.outputs.body }}
           attachments: output/news.json
 
